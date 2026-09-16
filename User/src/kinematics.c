@@ -20,14 +20,14 @@
  * ============================================================ */
 
 // 电机角 -> 几何角
-static float U1_Motor2Geom(float u1)
+float U1_Motor2Geom(float u1)
 {
     return u1 + ARM_U1_ZERO_POS;
 }
 
-static float U2_Motor2Geom(float u1, float u2)
+float U2_Motor2Geom(float u1, float u2)
 {
-    return (u1 + u2) * ARM_U2_RATIO + ARM_U2_ZERO_POS;
+    return ARM_U2_ZERO_POS-(u1 + u2) * ARM_U2_RATIO ;
 }
 
 // 几何角 -> 电机角
@@ -39,7 +39,7 @@ static float U1_Geom2Motor(float theta1)
 static float U2_Geom2Motor(float theta1, float theta2)
 {
     float u1 = U1_Geom2Motor(theta1);
-    return u1 - (theta2 - ARM_U2_ZERO_POS) / ARM_U2_RATIO;
+    return (ARM_U2_ZERO_POS-theta2)/ARM_U2_RATIO-u1;
 }
 
 // 正运动学: 关节电机角 -> 末端坐标(mm)

@@ -1,5 +1,5 @@
 #include "seize_sky.h"
-
+#include "kinematics.h"
 #include "DJmotor.h"
 
 
@@ -27,7 +27,11 @@ volatile uint8_t Is_open=0;
 volatile uint8_t Is_ok=0;
 volatile uint8_t Is_Sys_reset=0;
 volatile uint8_t Is_sky_ready=0;
+
+volatile Vec2 Target_Vec;
 ArmControl_t ArmControl;
+Arm_Interpolation_t Arm_Debug={0,0,0,ARM_MOVE_TIME};
+Arm_Kinetics_Data_t Arm_Kinetics_Data={0};
 
 static uint8_t Is_enable=0;
 
@@ -243,6 +247,18 @@ static void Arm_sky_Ready_Process(void)
 }
 
 
+
+//调试状态
+static void Arm_Debug_Process(void)
+{
+    if (ArmControl.running == false &&
+        ArmControl.finish == false)
+    {
+        Arm_Interpolation_Start(Arm_Debug.u1_target,Arm_Debug.u2_target,Arm_Debug.dj_target,Arm_Debug.move_time);
+    }
+}
+
+
 //起始状态
 static void Arm_NONE_Process(void)
 {
@@ -335,8 +351,21 @@ static void Arm_KEEP_Process(void)
     }
 }
 
+/*
+自由决定末端执行器坐标
 
+坐标-》关节角-》关节角转成可驱动值
 
+*/
+static void Arm_Position_Process(void)
+{
+    if (ArmControl.running == false &&
+    ArmControl.finish == false)
+    {
+
+        Arm_Interpolation_Start(ARM_U1_KEEP_POS,ARM_U2_KEEP_POS,ARM_DJ_KEEP_POS,ARM_MOVE_TIME);
+    }
+}
 
 
 void Arm_State_Update(void)
@@ -522,6 +551,13 @@ void Arm_Control_Task(void *argument)
         //     ArmControl.state=ArmControl.last_state;
         // }
 
+        Arm_Kinetics_Data.motor_target=Arm_Debug;
+        Arm_Kinetics_Data.arm_angle.Angle1=U1_Motor2Geom(Unitree_motors[0].data.position);
+        Arm_Kinetics_Data.arm_angle.Angle2=U2_Motor2Geom(Unitree_motors[0].data.position,Unitree_motors[1].data.position);
+        Arm_Kinetics_Data.forward_angle.u1_theta=Unitree_motors[0].data.position;
+        Arm_Kinetics_Data.forward_angle.u2_theta=Unitree_motors[1].data.position;
+        Arm_Kinetics_Data.end_coordinate=Forward(Arm_Kinetics_Data.forward_angle);
+        Arm_Kinetics_Data.inverse_angle=Inverse(Arm_Kinetics_Data.end_coordinate);
          if (ArmControl.state != ArmControl.last_state)
         {
              ArmControl.running = false;
@@ -615,6 +651,10 @@ void Arm_Control_Task(void *argument)
 
             case ARM_STATE_SKY:
                 Arm_SKY_Process();
+                break;
+
+            case ARM_DEBUG:
+                Arm_Debug_Process();
                 break;
 
 
